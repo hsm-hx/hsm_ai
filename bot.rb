@@ -15,7 +15,7 @@ def tweet2textdata(text)
   return text
 end
 
-class YukiBot
+class Bot
   attr_accessor :client
 
   def initialize
@@ -31,10 +31,8 @@ class YukiBot
     if status_id
       rep_text = "@#{twitter_id} #{text}"
       @client.update(rep_text, {:in_reply_to_status_id => status_id})
-      puts "#{text}"
     else
       @client.update(text)
-      puts "#{text}"
     end
   end
 
@@ -96,7 +94,7 @@ class NattoParser
   end
 end
 
-def genMarcovArray(words)
+def genMarcovBlock(words)
   array = []
 
   # 最初と最後はnilにする
@@ -111,16 +109,84 @@ def genMarcovArray(words)
   return array
 end
 
+def findBlocks(array, target)
+  blocks = []
+  for block in array
+    if block[0] == target
+      blocks.push(block)
+    end
+  end
+  
+  return blocks
+end
+
+def connectBlocks(array, dist)
+  i = 0
+  for word in array[rand(array.length)]
+    if i != 0
+      dist.push(word)
+    end
+    i += 1
+  end
+  return dist
+end
+
+def marcov(array)
+  result = []
+  block = []
+
+  block = findBlocks(array, nil)
+  result = connectBlocks(block, result)
+ 
+  # resultの最後の単語がnilになるまで繰り返す
+  while result[result.length-1] != nil do
+    block = findBlocks(array, result[result.length-1])
+    result = connectBlocks(block, result)
+  end
+  
+  return result
+end
+
+def words2str(words)
+  str = ""
+  for word in words do
+    if word != nil
+      str += word
+    end
+  end
+  return str
+end
+
 def main()
-  bot = YukiBot.new
+  bot = Bot.new
   parser = NattoParser.new
 
-  tweets = bot.get_tweet("hsm_hx", 1)
+  tweets = bot.get_tweet("hsm_hx", 50)
   words = parser.parseTextArray(tweets)
+  mw= []
+  ma= []
+
+  tweet = ""
   
-  # for word in words
-    p genMarcovArray(words[0])
-  # end
+  # 3単語ブロックをツイートごとの配列に格納
+  for word in words
+    mw.push(genMarcovBlock(word))
+  end
+
+  # 3単語ブロックを全て同じ配列へ
+  mw.each do |a|
+    a.each do |v|
+      ma.push(v)
+    end
+  end
+
+  # 140字に収まる文章が練成できるまでマルコフ連鎖する
+  while tweet.length == 0 or tweet.length > 140 do
+    tweetwords = marcov(ma)
+    tweet = words2str(tweetwords)
+  end
+
+  bot.post(tweet)
 end
 
 main()
