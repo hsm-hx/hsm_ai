@@ -96,14 +96,31 @@ class NattoParser
   end
 end
 
+def genMarcovArray(words)
+  array = []
+
+  # 最初と最後はnilにする
+  words.unshift(nil)
+  words.push(nil)
+
+  # 3単語ずつ配列に格納
+  for i in 0..words.length-3
+    array.push([words[i], words[i+1], words[i+2]])
+  end
+
+  return array
+end
+
 def main()
   bot = YukiBot.new
   parser = NattoParser.new
 
-  tweets = bot.get_tweet("hsm_hx", 5)
+  tweets = bot.get_tweet("hsm_hx", 1)
   words = parser.parseTextArray(tweets)
   
-  p words
+  # for word in words
+    p genMarcovArray(words[0])
+  # end
 end
 
 main()
