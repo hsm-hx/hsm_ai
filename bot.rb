@@ -1,7 +1,8 @@
+require 'natto'
 require 'twitter'
 require './secret.rb'
 
-def parseText(text)
+def tweet2textdata(text)
   replypattern = /@[\w]+/
 
   text = text.gsub(replypattern, '')
@@ -49,13 +50,18 @@ class YukiBot
     end
   end
 
-  def show_recently_tweet(user_name, tweet_count)
-    @client.user_timeline(user_name, {count: tweet_count}).each do |timeline|
+  # user_nameのツイートを過去tweet_count個取得する
+  def get_tweet(user_name, tweet_count)
+    tweets = []
+    
+    @client.user_timeline(user_name, {count: tweet_count, exclude: retweets}).each do |timeline|
       tweet = @client.status(timeline.id)
-      if not tweet.text.include?("RT @鍵:")
-        puts parseText(tweet.text)
+      if not tweet.text.include?("RT")
+        tweets.push(tweet2textdata(tweet.text))
       end
     end
+
+    return tweets
   end
 
   def search(word, count)
@@ -65,6 +71,39 @@ class YukiBot
   end
 end
 
-bot = YukiBot.new
+class NattoParser
+  attr_accessor :nm
+  
+  def initialize()
+    @nm = Natto::MeCab.new
+  end
+  
+  def parseTextArray(texts)
+    words = []
+    index = 0
 
-bot.show_recently_tweet("hsm_hx", 20)
+    for text in texts do
+      words.push(Array[])
+      @nm.parse(text) do |n|
+        if n.surface != ""
+          words[index].push(n.surface)
+        end
+      end
+      index += 1
+    end
+
+    return words
+  end
+end
+
+def main()
+  bot = YukiBot.new
+  parser = NattoParser.new
+
+  tweets = bot.get_tweet("hsm_hx", 5)
+  words = parser.parseTextArray(tweets)
+  
+  p words
+end
+
+main()
