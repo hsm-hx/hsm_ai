@@ -1,6 +1,19 @@
 require 'twitter'
 require './secret.rb'
 
+def parseText(text)
+  replypattern = /@[\w]+/
+
+  text = text.gsub(replypattern, '')
+  textURI = URI.extract(text)
+
+  for uri in textURI do
+    text = text.gsub!(uri, '')
+  end 
+
+  return text
+end
+
 class YukiBot
   attr_accessor :client
 
@@ -39,8 +52,9 @@ class YukiBot
   def show_recently_tweet(user_name, tweet_count)
     @client.user_timeline(user_name, {count: tweet_count}).each do |timeline|
       tweet = @client.status(timeline.id)
-      puts tweet.created_at
-      puts tweet.text
+      if not tweet.text.include?("RT @鍵:")
+        puts parseText(tweet.text)
+      end
     end
   end
 
@@ -53,4 +67,4 @@ end
 
 bot = YukiBot.new
 
-bot.search("#はすみめも", 5)
+bot.show_recently_tweet("hsm_hx", 20)
