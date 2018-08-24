@@ -1,19 +1,6 @@
 require 'natto'
 require 'twitter'
-require './secret.rb'
-
-def tweet2textdata(text)
-  replypattern = /@[\w]+/
-
-  text = text.gsub(replypattern, '')
-  textURI = URI.extract(text)
-
-  for uri in textURI do
-    text = text.gsub!(uri, '')
-  end 
-
-  return text
-end
+require '~/programming/ruby/Twitter-managerbot/secret.rb'
 
 class Bot
   attr_accessor :client
@@ -87,7 +74,11 @@ class Bot
   end
 
   def auto_follow(user_name)
-    @client.follow(get_follower(user_name)- get_friend(user_name))
+    begin
+      @client.follow(get_follower(user_name)- get_friend(user_name))
+    rescue Twitter::Error::Forbidden
+      # そのまま続ける
+    end  
   end
 end
 
@@ -114,6 +105,19 @@ class NattoParser
 
     return words
   end
+end
+
+def tweet2textdata(text)
+  replypattern = /@[\w]+/
+
+  text = text.gsub(replypattern, '')
+  textURI = URI.extract(text)
+
+  for uri in textURI do
+    text = text.gsub!(uri, '')
+  end 
+
+  return text
 end
 
 def genMarcovBlock(words)
@@ -144,13 +148,18 @@ end
 
 def connectBlocks(array, dist)
   i = 0
-  for word in array[rand(array.length)]
-    if i != 0
-      dist.push(word)
+  begin
+    for word in array[rand(array.length)]
+      if i != 0
+        dist.push(word)
+      end
+      i += 1
     end
-    i += 1
+  rescue NoMethodError
+    return nil
+  else
+    return dist
   end
-  return dist
 end
 
 def marcov(array)
@@ -158,12 +167,26 @@ def marcov(array)
   block = []
 
   block = findBlocks(array, nil)
-  result = connectBlocks(block, result)
+  begin
+    result = connectBlocks(block, result)
+    if result == nil
+      raise RunTimeError
+    end
+  rescue RunTimeError
+    retry
+  end
  
   # resultの最後の単語がnilになるまで繰り返す
   while result[result.length-1] != nil do
     block = findBlocks(array, result[result.length-1])
-    result = connectBlocks(block, result)
+    begin
+      result = connectBlocks(block, result)
+      if result == nil
+        raise RunTimeError
+      end
+    rescue RunTimeError
+      retry
+    end
   end
   
   return result
@@ -183,10 +206,7 @@ def main()
   bot = Bot.new
   parser = NattoParser.new
 
-  bot.auto_follow("hsm_hx_bot")
-
-  '''
-  tweets = bot.get_tweet("hsm_hx", 50)
+  tweets = bot.get_tweet("hsm_hx", 200)
   words = parser.parseTextArray(tweets)
   mw= []
   ma= []
@@ -212,7 +232,8 @@ def main()
   end
 
   bot.post(tweet)
-  '''
+
+  bot.auto_follow("hsm_hx_bot")
 end
 
 main()
