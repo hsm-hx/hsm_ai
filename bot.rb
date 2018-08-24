@@ -67,6 +67,28 @@ class Bot
       puts tweet.text
     end
   end
+
+  # user_nameのフォロワーを取得する
+  def get_follower(user_name)
+    follower = []
+    @client.follower_ids(user_name).each do |id|
+      follower.push(id)
+    end
+    return follower
+  end
+
+  # user_nameの相互を取得する
+  def get_friend(user_name)
+    friend = []
+    @client.friend_ids(user_name).each do |id|
+      friend.push(id)
+    end
+    return friend
+  end
+
+  def auto_follow(user_name)
+    @client.follow(get_follower(user_name)- get_friend(user_name))
+  end
 end
 
 class NattoParser
@@ -161,6 +183,9 @@ def main()
   bot = Bot.new
   parser = NattoParser.new
 
+  bot.auto_follow("hsm_hx_bot")
+
+  '''
   tweets = bot.get_tweet("hsm_hx", 50)
   words = parser.parseTextArray(tweets)
   mw= []
@@ -187,6 +212,7 @@ def main()
   end
 
   bot.post(tweet)
+  '''
 end
 
 main()
