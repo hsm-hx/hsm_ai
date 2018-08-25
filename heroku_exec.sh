@@ -9,6 +9,4 @@ echo "userdic = /app/vendor/mecab/dic/ipadic/user.dic" >> /app/vendor/mecab/lib/
 
 export MECAB_PATH="/app/vendor/mecab/lib/libmecab.so"
 
-find /app/vendor/ -name "*mecab*"
-
 ruby bot.rb
