@@ -232,7 +232,7 @@ def main()
 
   bot.post(tweet)
 
-  bot.auto_follow("hsm_hx_bot")
+  bot.auto_follow("hsm_ai")
 end
 
 main()
