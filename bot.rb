@@ -40,7 +40,7 @@ class Bot
     
     @client.user_timeline(user_name, {count: tweet_count, exclude: retweets}).each do |timeline|
       tweet = @client.status(timeline.id)
-      if not (tweet.text.include?("RT") and tweet.text.include?("hatenablog"))
+      if not (tweet.text.include?("RT") or tweet.text.include?("hatenablog"))
         tweets.push(tweet2textdata(tweet.text))
       end
     end
