@@ -145,6 +145,17 @@ class NattoParser
     index = 0
 
     for text in texts do
+      # 単語数を数える
+      count_noun = 0
+      @nm.parse(text) do |n|
+        count_noun += 1
+      end
+
+      # 1単語しかなければ以後の処理を行わない
+      if count_noun == 1
+        break
+      end
+
       words.push(Array[])
       @nm.parse(text) do |n|
         if n.surface != ""
@@ -234,6 +245,9 @@ class Marcov
     end
 end
 
+# ===================================================
+# 汎用関数
+# ===================================================
 def words2str(words)
   str = ""
   for word in words do
@@ -244,6 +258,9 @@ def words2str(words)
   return str
 end
 
+# ===================================================
+# MAIN
+# ===================================================
 def main()
   bot = Bot.new
 
