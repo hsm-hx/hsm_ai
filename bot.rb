@@ -4,81 +4,131 @@ require 'twitter'
 class Bot
   attr_accessor :client
 
-  def initialize
-    @client = Twitter::REST::Client.new do |config|
-      config.consumer_key = ENV['CONSUMER_KEY']
-      config.consumer_secret = ENV['CONSUMER_SECRET']
-      config.access_token = ENV['ACCESS_TOKEN_KEY']
-      config.access_token_secret = ENV['ACCESS_TOKEN_SECRET']
-    end
-  end
-
-  def post(text = "", twitter_id:nil, status_id:nil)
-    if status_id
-      rep_text = "@#{twitter_id} #{text}"
-      @client.update(rep_text, {:in_reply_to_status_id => status_id})
-    else
-      @client.update(text)
-    end
-  end
-
-  def fav(status_id:nil)
-    if status_id
-      @client.favorite(status_id)
-    end
-  end
-
-  def retweets(status_id:nil)
-    if status_id
-      @client.retweet(status_id)
-    end
-  end
-
-  # user_nameのツイートを過去tweet_count個取得する
-  def get_tweet(user_name, tweet_count)
-    tweets = []
-    
-    @client.user_timeline(user_name, {count: tweet_count, exclude: retweets}).each do |timeline|
-      tweet = @client.status(timeline.id)
-      if not (tweet.text.include?("RT") or tweet.text.include?("hatenablog") or tweet.text.include?("swarm"))
-        tweets.push(tweet2textdata(tweet.text))
+  public
+    def initialize
+      @client = Twitter::REST::Client.new do |config|
+        config.consumer_key = ENV['CONSUMER_KEY']
+        config.consumer_secret = ENV['CONSUMER_SECRET']
+        config.access_token = ENV['ACCESS_TOKEN_KEY']
+        config.access_token_secret = ENV['ACCESS_TOKEN_SECRET']
       end
     end
+     
+    def tweet(screen_name)
+      parser = NattoParser.new
 
-    return tweets
-  end
+      tweets = get_tweet(screen_name, 200)
+      words = parser.parseTextArray(tweets)
+      mw= []
+      ma= []
 
-  def search(word, count)
-    @client.search(word).take(count).each do |tweet|
-      puts tweet.text
+      tweet = ""
+      
+      # 3単語ブロックをツイートごとの配列に格納
+      for word in words
+        mw.push(genMarcovBlock(word))
+      end
+
+      # 3単語ブロックを全て同じ配列へ
+      mw.each do |a|
+        a.each do |v|
+          ma.push(v)
+        end
+      end
+
+      # 140字に収まる文章が練成できるまでマルコフ連鎖する
+      while tweet.length == 0 or tweet.length > 140 do
+        tweetwords = marcov(ma)
+        tweet = words2str(tweetwords)
+      end
+
+      post(tweet)
     end
-  end
 
-  # user_nameのフォロワーを取得する
-  def get_follower(user_name)
-    follower = []
-    @client.follower_ids(user_name).each do |id|
-      follower.push(id)
+    def auto_follow(user_name)
+      begin
+        @client.follow(get_follower(user_name)- get_friend(user_name))
+      rescue Twitter::Error::Forbidden
+        # そのまま続ける
+      end  
     end
-    return follower
-  end
 
-  # user_nameの相互を取得する
-  def get_friend(user_name)
-    friend = []
-    @client.friend_ids(user_name).each do |id|
-      friend.push(id)
+  private
+    # ===============================================
+    # Twitter API
+    # ===============================================
+    def post(text = "", twitter_id:nil, status_id:nil)
+      if status_id
+        rep_text = "@#{twitter_id} #{text}"
+        @client.update(rep_text, {:in_reply_to_status_id => status_id})
+      else
+        @client.update(text)
+      end
     end
-    return friend
-  end
+    
+    def fav(status_id:nil)
+      if status_id
+        @client.favorite(status_id)
+      end
+    end
+    
+    def retweets(status_id:nil)
+      if status_id
+        @client.retweet(status_id)
+      end
+    end
+    
+    def get_tweet(user_name, tweet_count)
+      tweets = []
+      
+      @client.user_timeline(user_name, {count: tweet_count, exclude: retweets}).each do |timeline|
+        tweet = @client.status(timeline.id)
+        if not (tweet.text.include?("RT") or tweet.text.include?("hatenablog") or tweet.text.include?("swarm"))
+          tweets.push(tweet2textdata(tweet.text))
+        end
+      end
 
-  def auto_follow(user_name)
-    begin
-      @client.follow(get_follower(user_name)- get_friend(user_name))
-    rescue Twitter::Error::Forbidden
-      # そのまま続ける
-    end  
-  end
+      return tweets
+    end
+    
+    def search(word, count)
+      @client.search(word).take(count).each do |tweet|
+        puts tweet.text
+      end
+    end
+    
+    def get_follower(user_name)
+      follower = []
+      @client.follower_ids(user_name).each do |id|
+        follower.push(id)
+      end
+      return follower
+    end
+    
+    def get_friend(user_name)
+      friend = []
+      @client.friend_ids(user_name).each do |id|
+        friend.push(id)
+      end
+      return friend
+    end
+
+    # ===============================================
+    # データ処理メソッド
+    # ===============================================
+    def tweet2textdata(text)
+      replypattern = /@[\w]+/
+
+      text = text.gsub(replypattern, '')
+
+      textURI = URI.extract(text)
+
+      for uri in textURI do
+        text = text.gsub(uri, '')
+      end 
+
+      return text
+    end
 end
 
 class NattoParser
@@ -104,20 +154,6 @@ class NattoParser
 
     return words
   end
-end
-
-def tweet2textdata(text)
-  replypattern = /@[\w]+/
-
-  text = text.gsub(replypattern, '')
-
-  textURI = URI.extract(text)
-
-  for uri in textURI do
-    text = text.gsub(uri, '')
-  end 
-
-  return text
 end
 
 def genMarcovBlock(words)
@@ -204,35 +240,8 @@ end
 
 def main()
   bot = Bot.new
-  parser = NattoParser.new
 
-  tweets = bot.get_tweet("hsm_hx", 200)
-  words = parser.parseTextArray(tweets)
-  mw= []
-  ma= []
-
-  tweet = ""
-  
-  # 3単語ブロックをツイートごとの配列に格納
-  for word in words
-    mw.push(genMarcovBlock(word))
-  end
-
-  # 3単語ブロックを全て同じ配列へ
-  mw.each do |a|
-    a.each do |v|
-      ma.push(v)
-    end
-  end
-
-  # 140字に収まる文章が練成できるまでマルコフ連鎖する
-  while tweet.length == 0 or tweet.length > 140 do
-    tweetwords = marcov(ma)
-    tweet = words2str(tweetwords)
-  end
-
-  bot.post(tweet)
-
+  bot.tweet("hsm_hx")
   bot.auto_follow("hsm_ai")
 end
 
