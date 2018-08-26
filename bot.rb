@@ -208,7 +208,7 @@ def marcov(array)
     if result == nil
       raise RunTimeError
     end
-  rescue RunTimeError
+  rescue RuntimeError
     retry
   end
  
