@@ -16,29 +16,31 @@ class Bot
      
     def tweet(screen_name)
       parser = NattoParser.new
+      marcov = Marcov.new
 
-      tweets = get_tweet(screen_name, 200)
-      words = parser.parseTextArray(tweets)
-      mw= []
-      ma= []
+      unparsedBlock = []
+      block = []
 
       tweet = ""
       
+      tweets = get_tweet(screen_name, 200)
+      words = parser.parseTextArray(tweets)
+      
       # 3単語ブロックをツイートごとの配列に格納
       for word in words
-        mw.push(genMarcovBlock(word))
+        unparsedBlock.push(marcov.genMarcovBlock(word))
       end
 
       # 3単語ブロックを全て同じ配列へ
-      mw.each do |a|
+      unparsedBlock.each do |a|
         a.each do |v|
-          ma.push(v)
+          block.push(v)
         end
       end
 
       # 140字に収まる文章が練成できるまでマルコフ連鎖する
       while tweet.length == 0 or tweet.length > 140 do
-        tweetwords = marcov(ma)
+        tweetwords = marcov.marcov(block)
         tweet = words2str(tweetwords)
       end
 
@@ -156,76 +158,80 @@ class NattoParser
   end
 end
 
-def genMarcovBlock(words)
-  array = []
+class Marcov
+  public
+    def marcov(array)
+      result = []
+      block = []
 
-  # 最初と最後はnilにする
-  words.unshift(nil)
-  words.push(nil)
-
-  # 3単語ずつ配列に格納
-  for i in 0..words.length-3
-    array.push([words[i], words[i+1], words[i+2]])
-  end
-
-  return array
-end
-
-def findBlocks(array, target)
-  blocks = []
-  for block in array
-    if block[0] == target
-      blocks.push(block)
-    end
-  end
-  
-  return blocks
-end
-
-def connectBlocks(array, dist)
-  i = 0
-  begin
-    for word in array[rand(array.length)]
-      if i != 0
-        dist.push(word)
+      block = findBlocks(array, nil)
+      begin
+        result = connectBlocks(block, result)
+        if result == nil
+          raise RunTimeError
+        end
+      rescue RuntimeError
+        retry
       end
-      i += 1
-    end
-  rescue NoMethodError
-    return nil
-  else
-    return dist
-  end
-end
-
-def marcov(array)
-  result = []
-  block = []
-
-  block = findBlocks(array, nil)
-  begin
-    result = connectBlocks(block, result)
-    if result == nil
-      raise RunTimeError
-    end
-  rescue RuntimeError
-    retry
-  end
- 
-  # resultの最後の単語がnilになるまで繰り返す
-  while result[result.length-1] != nil do
-    block = findBlocks(array, result[result.length-1])
-    begin
-      result = connectBlocks(block, result)
-      if result == nil
-        raise RunTimeError
+     
+      # resultの最後の単語がnilになるまで繰り返す
+      while result[result.length-1] != nil do
+        block = findBlocks(array, result[result.length-1])
+        begin
+          result = connectBlocks(block, result)
+          if result == nil
+            raise RunTimeError
+          end
+        rescue RunTimeError
+          retry
+        end
       end
-    rescue RunTimeError
-      retry
+      
+      return result
     end
-  end
-  
-  return result
+
+    def genMarcovBlock(words)
+      array = []
+
+      # 最初と最後はnilにする
+      words.unshift(nil)
+      words.push(nil)
+
+      # 3単語ずつ配列に格納
+      for i in 0..words.length-3
+        array.push([words[i], words[i+1], words[i+2]])
+      end
+
+      return array
+    end
+
+  private
+    def findBlocks(array, target)
+      blocks = []
+      for block in array
+        if block[0] == target
+          blocks.push(block)
+        end
+      end
+      
+      return blocks
+    end
+
+    def connectBlocks(array, dist)
+      i = 0
+      begin
+        for word in array[rand(array.length)]
+          if i != 0
+            dist.push(word)
+          end
+          i += 1
+        end
+      rescue NoMethodError
+        return nil
+      else
+        return dist
+      end
+    end
 end
 
 def words2str(words)
