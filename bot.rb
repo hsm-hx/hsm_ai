@@ -40,7 +40,7 @@ class Bot
     
     @client.user_timeline(user_name, {count: tweet_count, exclude: retweets}).each do |timeline|
       tweet = @client.status(timeline.id)
-      if not (tweet.text.include?("RT") or tweet.text.include?("hatenablog"))
+      if not (tweet.text.include?("RT") or tweet.text.include?("hatenablog") or tweet.text.include?("swarm"))
         tweets.push(tweet2textdata(tweet.text))
       end
     end
@@ -110,10 +110,11 @@ def tweet2textdata(text)
   replypattern = /@[\w]+/
 
   text = text.gsub(replypattern, '')
+
   textURI = URI.extract(text)
 
   for uri in textURI do
-    text = text.gsub!(uri, '')
+    text = text.gsub(uri, '')
   end 
 
   return text
