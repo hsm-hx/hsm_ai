@@ -54,7 +54,7 @@ class Bot
         # そのまま続ける
       end  
     end
-
+    
   private
     # ===============================================
     # Twitter API
@@ -68,7 +68,7 @@ class Bot
       end
     end
     
-    def fav(status_id:nil)
+    def fav(status_id)
       if status_id
         @client.favorite(status_id)
       end
@@ -85,7 +85,7 @@ class Bot
       
       @client.user_timeline(user_name, {count: tweet_count, exclude: retweets}).each do |timeline|
         tweet = @client.status(timeline.id)
-        if not (tweet.text.include?("RT") or tweet.text.include?("hatenablog") or tweet.text.include?("swarm"))
+        if not (tweet.text.include?("RT") or tweet.text.include?("hatenablog") or tweet.text.include?("swarm") or tweet.text.include?("Browsing"))
           tweets.push(tweet2textdata(tweet.text))
         end
       end
@@ -94,9 +94,11 @@ class Bot
     end
     
     def search(word, count)
+      tweets = []
       @client.search(word).take(count).each do |tweet|
-        puts tweet.text
+        tweets.push(tweet.id)
       end
+      return tweets
     end
     
     def get_follower(user_name)
@@ -191,9 +193,9 @@ class Marcov
         begin
           result = connectBlocks(block, result)
           if result == nil
-            raise RunTimeError
+            raise RuntimeError
           end
-        rescue RunTimeError
+        rescue RuntimeError
           retry
         end
       end
