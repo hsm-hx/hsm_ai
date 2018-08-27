@@ -89,6 +89,7 @@ class Bot
           if (tweet.source.include?("TweetDeck") or
               tweet.source.include_("Twitter for Android"))
             tweets.push(tweet2textdata(tweet.text))
+          end
         end
       end
 
