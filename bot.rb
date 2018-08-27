@@ -85,8 +85,10 @@ class Bot
       
       @client.user_timeline(user_name, {count: tweet_count, exclude: retweets}).each do |timeline|
         tweet = @client.status(timeline.id)
-        if not (tweet.text.include?("RT") or tweet.text.include?("hatenablog") or tweet.text.include?("swarm") or tweet.text.include?("Browsing"))
-          tweets.push(tweet2textdata(tweet.text))
+        if not (tweet.text.include?("RT")
+          if (tweet.source.include?("TweetDeck") or
+              tweet.source.include_("Twitter for Android"))
+            tweets.push(tweet2textdata(tweet.text))
         end
       end
 
