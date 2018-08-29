@@ -26,7 +26,7 @@ class TweetBot
       end
     end
     
-    def get_tweet(user=@screen_name, count=15)
+    def get_tweet(count=15, user=@screen_name)
       tweets = []
       
       @client.user_timeline(user, {count: count}).each do |timeline|
@@ -221,7 +221,7 @@ def generate_text(bot, screen_name=nil, filename=nil)
   if not filename == nil
     tweets = readJSON(filename)
   elsif not screen_name == nil
-    tweets = bot.get_tweet(screen_name, 200)
+    tweets = bot.get_tweet(200, screen_name)
   else
     raise RuntimeError
   end
@@ -316,9 +316,10 @@ def main()
 =end
 
   tweet = generate_text(bot, tweet_source)
-  bot.post(tweet)
+  p tweet
+  # bot.post(tweet)
   
-  bot.auto_follow()
+  # bot.auto_follow()
 end
 
 main()

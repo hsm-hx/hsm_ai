@@ -26,7 +26,7 @@ class TweetBot
       end
     end
     
-    def get_tweet(user=@screen_name, count=15)
+    def get_tweet(count=15, user=@screen_name)
       tweets = []
       
       @client.user_timeline(user, {count: count}).each do |timeline|
@@ -36,6 +36,7 @@ class TweetBot
           # Deckと泥公式以外からのツイートを除外
           if (tweet.source.include?("TweetDeck") or
               tweet.source.include?("Twitter for Android"))
+            p tweet2textdata(tweet.text)
             tweets.push(tweet2textdata(tweet.text))
           end
         end
@@ -209,7 +210,7 @@ end
 # ===================================================
 # 汎用関数
 # ===================================================
-def generate_text(bot, screen_name=nil, filename=nil)
+def generate_text(bot, source)
   parser = NattoParser.new
   marcov = Marcov.new
 
@@ -217,13 +218,12 @@ def generate_text(bot, screen_name=nil, filename=nil)
   block = []
 
   tweet = ""
-  
-  if not filename == nil
-    tweets = readJSON(filename)
-  elsif not screen_name == nil
-    tweets = bot.get_tweet(screen_name, 200)
+
+  if source.start_with?("@")
+    source.sub!(/@/, "")
+    tweets = bot.get_tweet(200, source)
   else
-    raise RuntimeError
+    tweets = readJSON(source)
   end
 
   words = parser.parseTextArray(tweets)
