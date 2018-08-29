@@ -92,23 +92,6 @@ class TweetBot
       end
       return friend
     end
-
-    # ===============================================
-    # データ処理
-    # ===============================================
-    def tweet2textdata(text)
-      replypattern = /@[\w]+/
-
-      text = text.gsub(replypattern, '')
-
-      textURI = URI.extract(text)
-
-      for uri in textURI do
-        text = text.gsub(uri, '')
-      end 
-
-      return text
-    end
 end
 
 class NattoParser
@@ -157,7 +140,7 @@ class Marcov
       begin
         result = connectBlocks(block, result)
         if result == nil
-          raise RunTimeError
+          raise RuntimeError
         end
       rescue RuntimeError
         retry
@@ -172,7 +155,7 @@ class Marcov
             raise RuntimeError
           end
         rescue RuntimeError
-          retry
+          return nil
         end
       end
       
@@ -226,17 +209,7 @@ end
 # ===================================================
 # 汎用関数
 # ===================================================
-def words2str(words)
-  str = ""
-  for word in words do
-    if word != nil
-      str += word
-    end
-  end
-  return str
-end
-
-def generate_text(bot, screen_name)
+def generate_text(bot, screen_name=nil, filename=nil)
   parser = NattoParser.new
   marcov = Marcov.new
 
@@ -245,7 +218,14 @@ def generate_text(bot, screen_name)
 
   tweet = ""
   
-  tweets = bot.get_tweet(screen_name, 200)
+  if not filename == nil
+    tweets = readJSON(filename)
+  elsif not screen_name == nil
+    tweets = bot.get_tweet(screen_name, 200)
+  else
+    raise RuntimeError
+  end
+
   words = parser.parseTextArray(tweets)
   
   # 3単語ブロックをツイートごとの配列に格納
@@ -262,13 +242,63 @@ def generate_text(bot, screen_name)
 
   # 140字に収まる文章が練成できるまでマルコフ連鎖する
   while tweet.length == 0 or tweet.length > 140 do
-    tweetwords = marcov.marcov(block)
+    begin
+      tweetwords = marcov.marcov(block)
+      if tweetwords == nil
+        raise RuntimeError
+      end
+    rescue RuntimeError
+      retry
+    end
     tweet = words2str(tweetwords)
   end
   
   return tweet
 end
 
+def readJSON(filename)
+  data = nil
+
+  File.open(filename) do |f|
+    data = JSON.load(f)
+  end
+
+  tweets = []
+
+  for d in data do
+    if d["user"]["screen_name"] == "hsm_hx"
+      if d["retweeted_status"] == nil
+        tweets.push(tweet2textdata(d["text"]))
+      end
+    end
+  end
+
+  return tweets
+end
+
+def words2str(words)
+  str = ""
+  for word in words do
+    if word != nil
+      str += word
+    end
+  end
+  return str
+end
+
+def tweet2textdata(text)
+  replypattern = /@[\w]+/
+
+  text = text.gsub(replypattern, '')
+
+  textURI = URI.extract(text)
+
+  for uri in textURI do
+    text = text.gsub(uri, '')
+  end 
+
+  return text
+end
 # ===================================================
 # MAIN
 # ===================================================
@@ -276,6 +306,14 @@ def main()
   bot = TweetBot.new("hsm_ai")
 
   tweet_source = "hsm_hx"
+
+=begin
+  Dir.glob("data/*") do |f|
+    tweet = generate_text(bot, nil, f)
+    p f
+    p tweet
+  end
+=end
 
   tweet = generate_text(bot, tweet_source)
   bot.post(tweet)

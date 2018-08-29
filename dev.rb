@@ -92,23 +92,6 @@ class TweetBot
       end
       return friend
     end
-
-    # ===============================================
-    # データ処理
-    # ===============================================
-    def tweet2textdata(text)
-      replypattern = /@[\w]+/
-
-      text = text.gsub(replypattern, '')
-
-      textURI = URI.extract(text)
-
-      for uri in textURI do
-        text = text.gsub(uri, '')
-      end 
-
-      return text
-    end
 end
 
 class NattoParser
@@ -157,7 +140,7 @@ class Marcov
       begin
         result = connectBlocks(block, result)
         if result == nil
-          raise RunTimeError
+          raise RuntimeError
         end
       rescue RuntimeError
         retry
@@ -285,7 +268,7 @@ def readJSON(filename)
   for d in data do
     if d["user"]["screen_name"] == "hsm_hx"
       if d["retweeted_status"] == nil
-        tweets.push(d["text"])
+        tweets.push(tweet2textdata(d["text"]))
       end
     end
   end
@@ -303,6 +286,19 @@ def words2str(words)
   return str
 end
 
+def tweet2textdata(text)
+  replypattern = /@[\w]+/
+
+  text = text.gsub(replypattern, '')
+
+  textURI = URI.extract(text)
+
+  for uri in textURI do
+    text = text.gsub(uri, '')
+  end 
+
+  return text
+end
 # ===================================================
 # MAIN
 # ===================================================
@@ -311,12 +307,18 @@ def main()
 
   tweet_source = "hsm_hx"
 
-  tweet = generate_text(bot, nil, "data/2017_02.json")
-  p tweet
-  # tweet = generate_text(bot, tweet_source)
-  # bot.post(tweet)
+=begin
+  Dir.glob("data/*") do |f|
+    tweet = generate_text(bot, nil, f)
+    p f
+    p tweet
+  end
+=end
+
+  tweet = generate_text(bot, tweet_source)
+  bot.post(tweet)
   
-  # bot.auto_follow()
+  bot.auto_follow()
 end
 
 main()
