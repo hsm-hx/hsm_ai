@@ -209,19 +209,18 @@ end
 # ===================================================
 # 汎用関数
 # ===================================================
-def generate_text(bot, screen_name=nil, filename=nil)
+def generate_text(bot, screen_name=nil, dir=nil)
   parser = NattoParser.new
   marcov = Marcov.new
 
-  unparsedBlock = []
   block = []
 
   tweet = ""
   
-  if not filename == nil
-    tweets = readJSON(filename)
-  elsif not screen_name == nil
+  if not screen_name == nil
     tweets = bot.get_tweet(200, screen_name)
+  elsif not dir == nil
+    tweets = get_tweets_from_JSON(dir)
   else
     raise RuntimeError
   end
@@ -230,15 +229,10 @@ def generate_text(bot, screen_name=nil, filename=nil)
   
   # 3単語ブロックをツイートごとの配列に格納
   for word in words
-    unparsedBlock.push(marcov.genMarcovBlock(word))
+    block.push(marcov.genMarcovBlock(word))
   end
 
-  # 3単語ブロックを全て同じ配列へ
-  unparsedBlock.each do |a|
-    a.each do |v|
-      block.push(v)
-    end
-  end
+  block = reduce_degree(block)
 
   # 140字に収まる文章が練成できるまでマルコフ連鎖する
   while tweet.length == 0 or tweet.length > 140 do
@@ -256,7 +250,7 @@ def generate_text(bot, screen_name=nil, filename=nil)
   return tweet
 end
 
-def readJSON(filename)
+def get_tweets_from_JSON(filename)
   data = nil
 
   File.open(filename) do |f|
@@ -286,6 +280,18 @@ def words2str(words)
   return str
 end
 
+def reduce_degree(array)
+  result = []
+
+  array.each do |a|
+    a.each do |v|
+      result.push(v)
+    end
+  end
+  
+  return result
+end
+
 def tweet2textdata(text)
   replypattern = /@[\w]+/
 
@@ -304,18 +310,16 @@ end
 # ===================================================
 def main()
   bot = TweetBot.new("hsm_ai")
-
+  
   tweet_source = "hsm_hx"
 
-=begin
-  Dir.glob("data/*") do |f|
-    tweet = generate_text(bot, nil, f)
-    p f
-    p tweet
+  if (ARGV[0] and ARGV[1]) != nil
+    dir = "data/" << ARGV[0] << "_" << ARGV[1] << ".json"
+    tweet = generate_text(bot, nil, dir)
+  else
+    tweet = generate_text(bot, tweet_source)
   end
-=end
 
-  tweet = generate_text(bot, tweet_source)
   p tweet
   # bot.post(tweet)
   
