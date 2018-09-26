@@ -137,7 +137,7 @@ class Marcov
       result = []
       block = []
 
-      block = findBlocks(array, nil)
+      block = findBlocks(array, -1)
       begin
         result = connectBlocks(block, result)
         if result == nil
@@ -147,8 +147,8 @@ class Marcov
         retry
       end
      
-      # resultの最後の単語がnilになるまで繰り返す
-      while result[result.length-1] != nil do
+      # resultの最後の単語が-1になるまで繰り返す
+      while result[result.length-1] != -1 do
         block = findBlocks(array, result[result.length-1])
         begin
           result = connectBlocks(block, result)
@@ -166,9 +166,9 @@ class Marcov
     def genMarcovBlock(words)
       array = []
 
-      # 最初と最後はnilにする
-      words.unshift(nil)
-      words.push(nil)
+      # 最初と最後は-1にする
+      words.unshift(-1)
+      words.push(-1)
 
       # 3単語ずつ配列に格納
       for i in 0..words.length-3
@@ -274,7 +274,7 @@ end
 def words2str(words)
   str = ""
   for word in words do
-    if word != nil
+    if word != -1
       str += word[0]
     end
   end
