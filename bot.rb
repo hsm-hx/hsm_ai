@@ -120,7 +120,8 @@ class NattoParser
       words.push(Array[])
       @nm.parse(text) do |n|
         if n.surface != ""
-          words[index].push(n.surface)
+          words[index].push([n.surface, n.posid])
+          p words[index]
         end
       end
       index += 1
@@ -274,7 +275,7 @@ def words2str(words)
   str = ""
   for word in words do
     if word != nil
-      str += word
+      str += word[0]
     end
   end
   return str
@@ -321,9 +322,9 @@ def main()
   end
 
   p tweet
-  # bot.post(tweet)
+  bot.post(tweet)
   
-  # bot.auto_follow()
+  bot.auto_follow()
 end
 
 main()
