@@ -47,9 +47,11 @@ class TweetBot
     def auto_follow()
       begin
         @client.follow(
-          get_follower(@screen_name)- get_friend(@screen_name))
-      rescue Twitter::Error::Forbidden
+          get_follower(@screen_name) - get_friend(@screen_name)
+        )
+      rescue Twitter::Error::Forbidden => error
         # そのまま続ける
+        p error
       end  
     end
     
@@ -121,7 +123,6 @@ class NattoParser
       @nm.parse(text) do |n|
         if n.surface != ""
           words[index].push([n.surface, n.posid])
-          p words[index]
         end
       end
       index += 1
@@ -140,7 +141,7 @@ class Marcov
       block = findBlocks(array, -1)
       begin
         result = connectBlocks(block, result)
-        if result == nil
+        if result == -1
           raise RuntimeError
         end
       rescue RuntimeError
@@ -152,11 +153,11 @@ class Marcov
         block = findBlocks(array, result[result.length-1])
         begin
           result = connectBlocks(block, result)
-          if result == nil
+          if result == -1
             raise RuntimeError
           end
         rescue RuntimeError
-          return nil
+          return -1
         end
       end
       
@@ -200,7 +201,7 @@ class Marcov
           i += 1
         end
       rescue NoMethodError
-        return nil
+        return -1
       else
         return dist
       end
@@ -239,7 +240,7 @@ def generate_text(bot, screen_name=nil, dir=nil)
   while tweet.length == 0 or tweet.length > 140 do
     begin
       tweetwords = marcov.marcov(block)
-      if tweetwords == nil
+      if tweetwords == -1
         raise RuntimeError
       end
     rescue RuntimeError
