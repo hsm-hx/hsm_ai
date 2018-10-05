@@ -51,7 +51,6 @@ class TweetBot
         )
       rescue Twitter::Error::Forbidden => error
         # そのまま続ける
-        p error
       end  
     end
     
@@ -139,48 +138,46 @@ class Marcov
 
       begin
         result = connectBlockBack(
-          findBlocksBack(blocks, keyword), 
-          result
+          findBlocks(blocks, keyword), 
+          result,
+          true
         )
-        p result
         if result == -1
           raise RuntimeError
         end
       rescue RuntimeError
         retry
       end
-     
+
       # resultの最後の単語が-1になるまで繰り返す
-      while not (result[result.length-1] == -1 and result[0] == -1) do
-        if result[0] != -1
-          p "result[0] != -1"
-          begin
-            result = connectBlockFront(
-              findBlocksFront(blocks, result[result.length-1]), 
-              result
-            )
-            if result == -1
-              raise RuntimeError
-            end
-          rescue RuntimeError
-            return -1
+      while result[result.length-1] != -1 do
+        begin
+          result = connectBlockBack(
+            findBlocksBack(blocks, result[result.length-1]), 
+            result
+          )
+          if result == -1
+            raise RuntimeError
           end
-        end
-        if result[result.length-1] != 1
-          begin
-            result = connectBlockBack(
-              findBlocksBack(blocks, result[result.length-1]), 
-              result
-            )
-            if result == -1
-              raise RuntimeError
-            end
-          rescue RuntimeError
-            return -1
-          end
+        rescue RuntimeError
+          return -1
         end
       end
-      
+
+      while result[0] != -1 do
+        begin
+          result = connectBlockFront(
+            findBlocksFront(blocks, result[0]), 
+            result
+          )
+          if result == -1
+            raise RuntimeError
+          end
+        rescue RuntimeError
+          return -1
+        end
+      end
+
       return result
     end
 
@@ -207,7 +204,7 @@ class Marcov
           blocks.push(block)
         end
       end
-      
+
       return blocks
     end
 
@@ -222,36 +219,53 @@ class Marcov
       return blocks
     end
 
-    def connectBlockFront(array, dist)
-      begin
-        i = 0
-        for word in array[rand(array.length)]
-          if i != 2 or word == -1 # 最後の被り要素を除く
-            dist.unshift(word)
-          end
-          i += 1
+    def findBlocks(array, target)
+      blocks = []
+      for block in array
+        if block.include?(target)
+          blocks.push(block)
         end
-      rescue NoMethodError
-        return -1
-      else
-        return dist
       end
+      
+      return blocks
     end
 
-    def connectBlockBack(array, dist)
-      begin
-        i = 0
-        for word in array[rand(array.length)]
-          if i != 0 or word == -1 # 先頭の被り要素を除く
-            dist.push(word)
-          end
-          i += 1
+    def connectBlockFront(array, dist)
+      part_of_dist = []
+
+      i = 0
+      block = array[rand(array.length)]
+
+      for word in block
+        if i != 2 or word == -1 # 最後の被り要素を除く
+          part_of_dist.unshift(word)
         end
-      rescue NoMethodError
-        return -1
-      else
-        return dist
+        i += 1
       end
+
+      for word in part_of_dist
+        dist.unshift(word)
+      end
+
+      return dist
+    end
+
+    def connectBlockBack(array, dist, first_time=false)
+      part_of_dist = []
+
+      i = 0
+      for word in array[rand(array.length)]
+        if i != 0 or word == -1 # 先頭の被り要素を除く
+          part_of_dist.push(word)
+        end
+        i += 1
+      end
+
+      for word in part_of_dist
+        dist.push(word)
+      end
+
+      return dist
     end
 end
 
@@ -287,6 +301,7 @@ def generate_text(bot, keyword, screen_name=nil, dir=nil)
   while tweet.length == 0 or tweet.length > 140 do
     begin
       tweetwords = marcov.marcov(block, keyword)
+      p tweetwords
       if tweetwords == -1
         raise RuntimeError
       end
@@ -364,12 +379,12 @@ def main()
 
   if (ARGV[0] and ARGV[1]) != nil
     dir = "data/" << ARGV[0] << "_" << ARGV[1] << ".json"
-    tweet = generate_text(bot, -1, nil, dir)
+    tweet = generate_text(bot, ["ミーン", 38], nil, dir)
   else
     tweet = generate_text(bot, -1, tweet_source)
   end
 
-  p tweet
+  p "tweet => " + tweet
   # bot.post(tweet)
   
   # bot.auto_follow()
