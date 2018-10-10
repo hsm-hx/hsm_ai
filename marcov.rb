@@ -311,7 +311,15 @@ def generate_text_from_json(keyword, dir)
 
   tweet = ""
   
-  tweets = get_tweets_from_JSON(dir)
+  if dir != ""
+    tweets = get_tweets_from_JSON(dir)
+  else
+    tweets = []
+    Dir.glob("data/*"){ |f|
+      tweets.push(get_tweets_from_JSON(f))
+    }
+    tweets = reduce_degree(tweets)
+  end
 
   words = parser.parseTextArray(tweets)
   
