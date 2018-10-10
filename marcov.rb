@@ -151,31 +151,17 @@ class Marcov
 
       # resultの最後の単語が-1になるまで繰り返す
       while result[result.length-1] != -1 do
-        begin
-          result = connectBlockBack(
-            findBlocksBack(blocks, result[result.length-1]), 
-            result
-          )
-          if result == -1
-            raise RuntimeError
-          end
-        rescue RuntimeError
-          return -1
-        end
+        result = connectBlockBack(
+          findBlocksBack(blocks, result[result.length-1]), 
+          result
+        )
       end
 
       while result[0] != -1 do
-        begin
-          result = connectBlockFront(
-            findBlocksFront(blocks, result[0]), 
-            result
-          )
-          if result == -1
-            raise RuntimeError
-          end
-        rescue RuntimeError
-          return -1
-        end
+        result = connectBlockFront(
+          findBlocksFront(blocks, result[0]), 
+          result
+        )
       end
 
       return result
@@ -205,6 +191,10 @@ class Marcov
         end
       end
 
+      if blocks.empty?
+        p array.select {|item| item.include?(target)}
+      end
+
       return blocks
     end
 
@@ -214,6 +204,10 @@ class Marcov
         if block[0] == target
           blocks.push(block)
         end
+      end
+
+      if blocks.empty?
+        p array.select {|item| item.include?(target)}
       end
       
       return blocks
@@ -254,7 +248,9 @@ class Marcov
       part_of_dist = []
 
       i = 0
-      for word in array[rand(array.length)]
+
+      block = array[rand(array.length)]
+      for word in block
         if i != 0 or word == -1 # 先頭の被り要素を除く
           part_of_dist.push(word)
         end
@@ -272,7 +268,7 @@ end
 # ===================================================
 # 汎用関数
 # ===================================================
-def generate_text(bot, keyword, screen_name=nil, dir=nil)
+def generate_text(keyword, bot)
   parser = NattoParser.new
   marcov = Marcov.new
 
@@ -280,13 +276,7 @@ def generate_text(bot, keyword, screen_name=nil, dir=nil)
 
   tweet = ""
   
-  if not screen_name == nil
-    tweets = bot.get_tweet(200, screen_name)
-  elsif not dir == nil
-    tweets = get_tweets_from_JSON(dir)
-  else
-    raise RuntimeError
-  end
+  tweets = bot.get_tweet(200, screen_name)
 
   words = parser.parseTextArray(tweets)
   
@@ -301,7 +291,41 @@ def generate_text(bot, keyword, screen_name=nil, dir=nil)
   while tweet.length == 0 or tweet.length > 140 do
     begin
       tweetwords = marcov.marcov(block, keyword)
-      p tweetwords
+      if tweetwords == -1
+        raise RuntimeError
+      end
+    rescue RuntimeError
+      retry
+    end
+    tweet = words2str(tweetwords)
+  end
+  
+  return tweet
+end
+
+def generate_text_from_json(keyword, dir)
+  parser = NattoParser.new
+  marcov = Marcov.new
+
+  block = []
+
+  tweet = ""
+  
+  tweets = get_tweets_from_JSON(dir)
+
+  words = parser.parseTextArray(tweets)
+  
+  # 3単語ブロックをツイートごとの配列に格納
+  for word in words
+    block.push(marcov.genMarcovBlock(word))
+  end
+
+  block = reduce_degree(block)
+
+  # 140字に収まる文章が練成できるまでマルコフ連鎖する
+  while tweet.length == 0 or tweet.length > 140 do
+    begin
+      tweetwords = marcov.marcov(block, keyword)
       if tweetwords == -1
         raise RuntimeError
       end
@@ -369,25 +393,3 @@ def tweet2textdata(text)
 
   return text
 end
-# ===================================================
-# MAIN
-# ===================================================
-def main()
-  bot = TweetBot.new("hsm_ai")
-  
-  tweet_source = "hsm_hx"
-
-  if (ARGV[0] and ARGV[1]) != nil
-    dir = "data/" << ARGV[0] << "_" << ARGV[1] << ".json"
-    tweet = generate_text(bot, ["ミーン", 38], nil, dir)
-  else
-    tweet = generate_text(bot, -1, tweet_source)
-  end
-
-  p "tweet => " + tweet
-  # bot.post(tweet)
-  
-  # bot.auto_follow()
-end
-
-main()
